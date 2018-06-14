@@ -1,0 +1,12 @@
+#!/bin/bash
+
+while getopts ":R" opt; do
+  case $opt in
+    R) RUNFOLDER=$OPTARG;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+
