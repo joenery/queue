@@ -1,0 +1,31 @@
+#!/bin/bash
+#takes a list of directories and makes a list of
+#rsync commands
+
+LISTFILE="$1"
+COMMAND="rsync -avs -i -h"
+SRC="/gale/netapp/seq4/illumina_runs" #path to parent of source dir
+DEST="/gale/raidix/rdx-3/illumina_runs" #dir to copy source into
+LOG="/gale/netapp/home/seq/logs/seq4/rsync"
+
+while getopts ":l:s:d:L" opt; do
+  case $opt in
+    l) LISTFILE=$OPTARG;;
+    s) SRC=$OPTARG;;
+    d) DEST=$OPTARG;;
+    L) LOG=$OPTARG;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+while read folder
+   do echo "$COMMAND $SRC/$folder $DEST --log-file=$LOG/$folder.txt"
+done < $LISTFILE
+
+#You can think of a trailing / on a source as meaning 
+#"copy the contents of this directory" as opposed to 
+#"copy the directory by name"
+
+#rsync -avs -i -h /gale/netapp/seq2/illumina_runs/ /gale/oberon/data10/ --log-file=/gale/netapp/home/seq/logs/seq2/rsync/.txt
