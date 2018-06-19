@@ -14,8 +14,8 @@ COMMANDS="commands"
 COMMANDPREFIX=$(basename $(pwd)) #prefix for the filenames of the split commands
 COMMANDSSPLIT="commands-split"
 COMMANDSSUBMISSION="commands-submission"
-WAITTIME=1800
 
+wait_time=1800
 max_jobs=4
 
 #split the list of commands into files
@@ -29,16 +29,20 @@ sed 's/^/qsub -cwd  -l  qname=gale.q  /' $COMMANDSSPLIT > $COMMANDSSUBMISSION
 
 jobs_in_q=0
 
-#read the jobs in the submissions file 
+#read the jobs from the commands submission file 
 while read job ; do 
   #count the number of jobs in the queue with the command prefix
   jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l)
+
   #read the QCONFIG file for the max number of jobs allowed concurrently
   max_jobs=$(cat $CONFIG | jq -r '.max_jobs')
+
+  #read the QCONFIG file for the wait_time
+  wait_time=$(cat $CONFIG | jq -r '.wait_time')
+
   #add jobs until max number of jobs allowed is reached
   until [ $jobs_in_q -lt  $max_jobs ] ; do
-    sleep $WAITTIME
-    jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l)
+    sleep $wait_time
   done
   date "+%Y%m%d %H:%M:%S.%N"
   $job
