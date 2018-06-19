@@ -9,34 +9,37 @@
 #  esac
 #done
 
+CONFIG="/gale/netapp/home/seq/bin/queue/q.cfg"
 COMMANDS="commands"
-PREFIX=$(basename $(pwd)) #prefix for the filenames of the split commands
+COMMANDPREFIX=$(basename $(pwd)) #prefix for the filenames of the split commands
 COMMANDSSPLIT="commands-split"
 COMMANDSSUBMISSION="commands-submission"
 WAITTIME=1800
 
+max_jobs=4
+
 #split the list of commands into files
-split -1 $COMMANDS $PREFIX
+split -1 $COMMANDS $COMMANDPREFIX
 
-#write the filenames into the split-commands file
-ls $PREFIX* > $COMMANDSSPLIT
+#write the list of filenames into the commands split file
+ls $COMMANDPREFIX* > $COMMANDSSPLIT
 
-#concatenate qsub command to the filenames and write to the submmission file
+#insert qsub command string in front of filenames and write to the submmission file
 sed 's/^/qsub -cwd  -l  qname=gale.q  /' $COMMANDSSPLIT > $COMMANDSSUBMISSION
 
 jobs_in_q=0
 
 #read the jobs in the submissions file 
 while read job ; do 
-  jobs_in_q=$(qstat -f | grep $PREFIX | wc -l)
-  until [ $jobs_in_q -lt  3 ] ; do
-    #echo "too many jobs in queue. waiting..."
+  #count the number of jobs in the queue with the command prefix
+  jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l)
+  #read the QCONFIG file for the max number of jobs allowed concurrently
+  max_jobs=$(cat $CONFIG | jq -r '.max_jobs')
+  #add jobs until max number of jobs allowed is reached
+  until [ $jobs_in_q -lt  $max_jobs ] ; do
     sleep $WAITTIME
-    #echo "checking jobs..."
-    jobs_in_q=$(qstat -f | grep $PREFIX | wc -l)
-    #echo $jobs_in_q
+    jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l)
   done
-  #echo "jobs < 3"
   date "+%Y%m%d %H:%M:%S.%N"
   $job
 done < $COMMANDSSUBMISSION
