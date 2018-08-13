@@ -1,0 +1,9 @@
+qsub -cwd  -l  qname=gale.q  testqueueaa
+qsub -cwd  -l  qname=gale.q  testqueueab
+qsub -cwd  -l  qname=gale.q  testqueueac
+qsub -cwd  -l  qname=gale.q  testqueuead
+qsub -cwd  -l  qname=gale.q  testqueueae
+qsub -cwd  -l  qname=gale.q  testqueueaf
+qsub -cwd  -l  qname=gale.q  testqueueag
+qsub -cwd  -l  qname=gale.q  testqueueah
+qsub -cwd  -l  qname=gale.q  testqueueai

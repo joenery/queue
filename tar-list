@@ -1,0 +1,28 @@
+#!/bin/bash
+#takes a list of directories and makes a list of
+#rsync commands
+
+LISTFILE="$1"
+COMMAND="tar -zcvf"
+SRC="/gale/netapp/seq4/illumina_runs/fastqs" #path to parent of source dir
+DEST="/gale/raidix/rdx-1/archive" #dir to copy source into
+LOG="/gale/netapp/home/seq/logs/rdx-1/tar"
+
+while getopts ":l:s:d:L" opt; do
+  case $opt in
+    l) LISTFILE=$OPTARG;;
+    s) SRC=$OPTARG;;
+    d) DEST=$OPTARG;;
+    L) LOG=$OPTARG;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+while read folder
+   do echo "$COMMAND $DEST/$folder.tar.gz $SRC/$folder > $LOG/$folder.txt"
+done < $LISTFILE
+
+#tar -zcvf /gale/gale_temp/seq5/170510_K00161_0134_BHK3WCBBXX.tar.gz /gale/netapp/seq5/illumina_runs/170510_K00161_0134_BHK3WCBBXX
+

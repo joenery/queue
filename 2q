@@ -16,7 +16,7 @@ COMMANDSSPLIT="commands-split"
 COMMANDSSUBMISSION="commands-submission"
 
 wait_time=1800
-max_jobs=4
+max_jobs=1
 
 #split the list of commands into files
 split -1 $COMMANDS $COMMANDPREFIX
@@ -29,22 +29,51 @@ sed 's/^/qsub -cwd  -l  qname=gale.q  /' $COMMANDSSPLIT > $COMMANDSSUBMISSION
 
 jobs_in_q=0
 
+####BUGS######
+#max jobs in queue check doesn't seem to be working
+#
+#y=${x:0:5}
+
+
+
 #read the jobs from the commands submission file 
 while read job ; do 
+
+  echo "Entering while loop."
+
+  #trim COMMANDPREFIX to the 10 characters visible in qstat
+  COMMANDPREFIX=$(echo awk $COMMANDPREFIX | awk '{print substr($NF,1,10)}')
+  echo "commandprefix to qstat: $COMMANDPREFIX"
+
   #count the number of jobs in the queue with the command prefix
   jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l)
+  echo "Current jobs in queue (jobs_in_q): $jobs_in_q"
 
-  #read the QCONFIG file for the max number of jobs allowed concurrently
+  #read the QCONFIG file for the max number concurrently running jobs
   max_jobs=$(cat $CONFIG | jq -r '.max_jobs')
+  echo "Concurrent jobs allowed in queue (max_jobs): $max_jobs"
 
   #read the QCONFIG file for the wait_time
   wait_time=$(cat $CONFIG | jq -r '.wait_time')
+  echo "Wait time between submission checks (wait_time): $wait_time"
 
-  #add jobs until max number of jobs allowed is reached
+  if [ $jobs_in_q -lt  $max_jobs ] ; then echo "fewer jobs in q" ; else echo "more jobs in q"; fi
   until [ $jobs_in_q -lt  $max_jobs ] ; do
+    echo "Entering until loop."
+    echo "Waiting $wait_time seconds"
     sleep $wait_time
+    max_jobs=$(cat $CONFIG | jq -r '.max_jobs')
+    echo "checking max jobs: $max_jobs"
+    wait_time=$(cat $CONFIG | jq -r '.wait_time')
+    echo "checking wait_time: $wait_time"
+    jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l) 
+    echo "checking jobs in queue: $jobs_in_q"
+    echo "exiting until loop" 
   done
   date "+%Y%m%d %H:%M:%S.%N"
+  echo "Submitting jobs" 
   $job
+  echo "Waiting 30 seconds before next attempt"
+  sleep 30
 done < $COMMANDSSUBMISSION
 echo "All jobs submitted."

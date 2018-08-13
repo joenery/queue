@@ -4,9 +4,9 @@
 
 LISTFILE="$1"
 COMMAND="rsync -avs -i -h"
-SRC="/gale/netapp/seq4/illumina_runs" #path to parent of source dir
+SRC="/gale/netapp/seq2/illumina_runs" #path to parent of source dir
 DEST="/gale/raidix/rdx-3/illumina_runs" #dir to copy source into
-LOG="/gale/netapp/home/seq/logs/seq4/rsync"
+LOG="/gale/netapp/home/seq/logs/seq2/rsync"
 
 while getopts ":l:s:d:L" opt; do
   case $opt in
