@@ -1,0 +1,37 @@
+#!/bin/bash
+
+#EXT="tar.gz"
+
+usage() {
+echo "Usage: list2rm -l list -s /gale/netapp/seq2/illumina_runs"
+echo "-l        file containing a list of directories or files"
+echo "-s        path to source parent directories where files reside"
+#echo "-d        path to destination parent directory"
+echo "-e        extension for files in the list if applicable"
+echo "-h        display this help message"
+}
+
+while getopts "l:s:e::h" opt; do
+  case $opt in
+    l) LISTFILE=$OPTARG;;
+    s) SRC=$OPTARG;;
+    d) DEST=$OPTARG;;
+    e) EXT=$OPTARG;;
+    h)
+      usage
+      exit 1;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+while read run_folder; do
+  if [ -z ${EXT+x} ]; then
+    echo "tar --compare --file=$SRC/$run_folder$EXT -C /"
+  else
+    echo "tar --compare --file=$SRC/$run_folder.$EXT -C /"
+  fi
+done < $LISTFILE
+
+#tar --compare --file=/gale/netapp/home/seq/tar/130104_HAL_1220_AC0NTJACXX.tar.gz -vC /

@@ -3,7 +3,7 @@
 #rsync commands
 
 LISTFILE="$1"
-COMMAND="rsync -avsz" # -i -h"
+COMMAND="grep ^19" # -i -h"
 #SRC="/gale/netapp/seq2/illumina_runs" #path to parent of source dir
 SRC="/gale/netapp/scratch"
 #DEST="/gale/oberon/data11" #dir to copy source into
@@ -38,7 +38,7 @@ while getopts ":l:s:d:e:L:h" opt; do
 done
 
 while read folder
-   do echo "$COMMAND $SRC/$folder $DEST" # --log-file=$LOG_PARENT/$DATE/$folder.txt"
+   do echo "$COMMAND $SRC/$folder/*.tsv | grep C[ATC][ATCG] | awk '{mc=mc+$5;h=h+$6;}END{print mc/h}' > $SRC/$folder/chr19mc.txt" # --log-file=$LOG_PARENT/$DATE/$folder.txt"
 done < $LISTFILE
 
 #You can think of a trailing / on a source as meaning 

@@ -1,0 +1,3 @@
+  --forward-ref /work/06382/seq/stampede2/genomes/hg19_noRM/hg19_f \
+  --reverse-ref /work/06382/seq/stampede2/genomes/hg19_noRM/hg19_r \
+  --ref-fasta /work/06382/seq/stampede2/genomes/hg19_noRM/hg19.fa \

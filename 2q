@@ -1,79 +1,170 @@
 #!/bin/bash
 
-#while getopts ":R" opt; do
-#  case $opt in
-#    R) RUNFOLDER=$OPTARG;;
-#    \?)
-#      echo "Invalid option: -$OPTARG" >&2
-#      ;;
-#  esac
-#done
+source "/gale/netapp/home/seq/bin/demux/date-time"
 
-CONFIG="/gale/netapp/home/seq/bin/queue/q.cfg"
-COMMANDS="commands"
-COMMANDPREFIX=$(basename $(pwd)) #prefix for the filenames of the split commands
+QCONFIG="/gale/netapp/home/seq/bin/queue/qdefault.cfg"
+COMMANDS="commands" #file containing list of bash commands
+commandprefix=$(basename $(pwd)-) #prefix for the filenames of the split commands
 COMMANDSSPLIT="commands-split"
-COMMANDSSUBMISSION="commands-submission"
-
-wait_time=1800
-max_jobs=1
-
-#split the list of commands into files
-split -1 $COMMANDS $COMMANDPREFIX
-
-#write the list of filenames into the commands split file
-ls $COMMANDPREFIX* > $COMMANDSSPLIT
-
-#insert qsub command string in front of filenames and write to the submmission file
-sed 's/^/qsub -cwd  -l  qname=gale.q  /' $COMMANDSSPLIT > $COMMANDSSUBMISSION
-
+COMMANDS2SUBMIT="commands2submit"
 jobs_in_q=0
+RECIPIENT="jnery@salk.edu"
+RECIPIENT2=""
+RUNNING="r"
+VMEM="11G"
+threads=1
 
-####BUGS######
-#max jobs in queue check doesn't seem to be working
-#
-#y=${x:0:5}
+usage() {
+echo "Usage: 2q -c ~/bin/queue/q.cfg &> log"
+echo "-p        count jobs in qstat with this prefix string, eg,"
+echo "             demux, oracle, versity or count jobs with pwd name"		
+echo "-c        path to queue configuration file"
+echo "-t        number of processor threads for each job"
+echo "-v        h_vmem to use per proc"
+echo "          numeral followed by G or M" 
+echo "          eg 2G. default $VMEM"
+echo "-M        email notice recipients upon completion (comma separated list)"
+echo "-h        display this help message"
+}
+
+while getopts ":p:c:t:v:M:h" opt; do
+  case $opt in
+    p) QSTATPREFIX=$OPTARG;;
+    c) QCONFIG=$OPTARG;;
+    t) threads=$OPTARG;;
+    v) VMEM=$OPTARG;;
+    M) RECIPIENT2=$OPTARG;;
+    h)
+      usage
+      exit 1;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+#recipients="$(echo $RECIPIENT,$RECIPIENT2 | tr -d ' ')"
+recipients="$(echo $RECIPIENT)"
+
+echo "$(date_time) INFO: qsub options: -pe smp $threads -l h_vmem=$VMEM"
+
+[ ! -z $QSTATPREFIX ] && qcheckname=$QSTATPREFIX || qcheckname=$commandprefix
+
+function count_jobs(){
+  qstatx | grep $qcheckname | wc -l
+}
 
 
+function checkstate(){
+  wait_time=$(cat $QCONFIG | jq -r '.wait_time')
+  puase+$(cat $QCONFIG | jq -r '.pause_time')
+  #check if job is in the queue
+  qstatx | grep $jobname  && state=$(qstatx | grep $jobname | awk '{print $5}') || state="failed"
+  [ -z $state ] && state=1
+}
 
-#read the jobs from the commands submission file 
-while read job ; do 
-
-  echo "Entering while loop."
-
-  #trim COMMANDPREFIX to the 10 characters visible in qstat
-  COMMANDPREFIX=$(echo awk $COMMANDPREFIX | awk '{print substr($NF,1,10)}')
-  echo "commandprefix to qstat: $COMMANDPREFIX"
-
-  #count the number of jobs in the queue with the command prefix
-  jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l)
-  echo "Current jobs in queue (jobs_in_q): $jobs_in_q"
-
+function getqconfig(){
   #read the QCONFIG file for the max number concurrently running jobs
-  max_jobs=$(cat $CONFIG | jq -r '.max_jobs')
-  echo "Concurrent jobs allowed in queue (max_jobs): $max_jobs"
+  max_jobs=$(cat $QCONFIG | jq -r '.max_jobs')
 
   #read the QCONFIG file for the wait_time
-  wait_time=$(cat $CONFIG | jq -r '.wait_time')
-  echo "Wait time between submission checks (wait_time): $wait_time"
+  wait_time=$(cat $QCONFIG | jq -r '.wait_time')
 
-  if [ $jobs_in_q -lt  $max_jobs ] ; then echo "fewer jobs in q" ; else echo "more jobs in q"; fi
+  pause=$(cat $QCONFIG | jq -r '.pause_time')
+}
+
+function checkstate(){
+  getqconfig
+  #check if job is in the queue
+  qstatx | grep $jobname  && state=$(qstatx | grep $jobname | awk '{print $5}') || state="failed"
+ # [ -z $state ] && state=1
+}
+
+
+#remove previous attempts to submit to the queue
+rm -f $commandprefix*
+
+#split the list of commands into files
+split -1 $COMMANDS $commandprefix
+
+#write the list of filenames into the commands split file
+ls $commandprefix* > $COMMANDSSPLIT
+
+#insert qsub command string in front of filenames and write to the submmission file
+#-V loads environment variables
+
+if [[ -z "$threads" ]]; then
+    sed "s/^/qsub -m ea -M $recipients -V -cwd -q gale.q -l h_vmem=$VMEM /" $COMMANDSSPLIT > $COMMANDS2SUBMIT
+else
+    sed "s/^/qsub -pe smp $threads -m ea -M $recipients -V -cwd -q gale.q -l h_vmem=$VMEM /" $COMMANDSSPLIT > $COMMANDS2SUBMIT
+fi
+
+rm $COMMANDSSPLIT
+
+echo "$(date_time) INFO: Path to queue configuration file: $QCONFIG"
+
+
+#read the jobs from the commands submission file. COMMANDS2SUBMIT
+while read job ; do 
+
+  getqconfig
+
+  #count the number of jobs in the queue with the command prefix
+  jobs_in_q=$(count_jobs)
+
+  #add jobs to the queue until the max number of jobs is reached
   until [ $jobs_in_q -lt  $max_jobs ] ; do
-    echo "Entering until loop."
-    echo "Waiting $wait_time seconds"
+
+    echo "$(date_time) INFO: Queue is full. $jobs_in_q $qcheckname jobs found. Waiting $wait_time seconds"
+
     sleep $wait_time
-    max_jobs=$(cat $CONFIG | jq -r '.max_jobs')
-    echo "checking max jobs: $max_jobs"
-    wait_time=$(cat $CONFIG | jq -r '.wait_time')
-    echo "checking wait_time: $wait_time"
-    jobs_in_q=$(qstat -f | grep $COMMANDPREFIX | wc -l) 
-    echo "checking jobs in queue: $jobs_in_q"
-    echo "exiting until loop" 
+
+    getqconfig
+
+    jobs_in_q=$(count_jobs)
+
   done
-  date "+%Y%m%d %H:%M:%S.%N"
-  echo "Submitting jobs" 
+
+  echo $job
+
+  jobname=$(echo $job | awk '{print $NF}')
+
+  printf "$(date_time) INFO: "
+ 
   $job
-  echo "Waiting 30 seconds before next attempt"
-  sleep 30
-done < $COMMANDSSUBMISSION
-echo "All jobs submitted."
+
+  #qsubout="$job"
+
+  #echo $qsubout
+
+  #jobid=$(echo $qsubout | awk '{print $3}')
+
+  #output is Your job 9787232 ("versity-130208_LAMARCK_3147_AC11CGACXX-aa") has been submitted
+
+  printf "$(date_time) INFO: Holding $pause seconds to intialize\n"
+
+  sleep $pause
+
+  checkstate
+
+  echo "$(date_time) INFO: Checking every $pause seconds until job is running"
+
+  #wait until the job is running
+  until [[ "$state" = "$RUNNING" || "$state" = "failed" ]] ; do
+
+    #echo "$(date_time) INFO: $jobname is not running. Waiting $wait_time seconds"
+
+    sleep $pause
+
+    checkstate
+
+  done
+
+  if [ "$state" = "$RUNNING" ] ; then 
+    echo "$(date_time) INFO: $jobname is running"
+  else
+    echo "$(date_time) ERROR: $jobname is not in the queue"
+  fi
+
+done < $COMMANDS2SUBMIT
+

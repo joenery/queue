@@ -11,22 +11,30 @@ DEST="/gale/oberon/data2"
 #LOG_PARENT="/gale/netapp/home/seq/logs/seq2/rsync"
 LOG_PARENT="/gale/netapp/home/seq/logs/scratch/rsync"
 DATE="181106"
+PART1="./script-template/part1"
+PART2="./script-template/part2"
+
+PREFIX="190214_Nathans_EC_mm_"
+SUFFIX="_snmCseq_Novaseq_pe_150_CL"
+
 
 usage() {
 echo "Usage: list2rsync -l list -s /gale/netapp/seq2/illumina_runs -d /gale/oberon/data2"
 echo "-l        file containing a list of directories or files"
-echo "-s        path to source parent directory where files reside"
-echo "-d        path to destination parent directory"
-#echo "-e        extension for files in the list if applicable"
+#echo "-s        path to source parent directory where files reside"
+#echo "-d        path to destination parent directory"
+#echo "-r        read id, eg R1"
 echo "-h        display this help message"
 }
 
-while getopts ":l:s:d:e:L:h" opt; do
+#READ="R1"
+
+while getopts ":l:s:d:r:L:h" opt; do
   case $opt in
     l) LISTFILE=$OPTARG;;
     s) SRC=$OPTARG;;
     d) DEST=$OPTARG;;
-    e) EXT=$OPTARG;;
+    r) READ=$OPTARG;;
     L) LOG=$OPTARG;;
     h)
       usage
@@ -38,10 +46,8 @@ while getopts ":l:s:d:e:L:h" opt; do
 done
 
 while read folder
-   do echo "$COMMAND $SRC/$folder $DEST" # --log-file=$LOG_PARENT/$DATE/$folder.txt"
+    do echo "SAMPLEID=\"$folder\"" > samplestring
+      cat $PART1 samplestring $PART2 > $PREFIX$folder$SUFFIX.sh
 done < $LISTFILE
 
-#You can think of a trailing / on a source as meaning 
-#"copy the contents of this directory" as opposed to 
-#"copy the directory by name"
-
+rm samplestring

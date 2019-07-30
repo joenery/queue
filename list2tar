@@ -1,0 +1,36 @@
+#!/bin/bash
+COMMAND="tar -zcvf"
+EXT="tar.gz"
+date="$(basename $(pwd) | awk -F"-" '{print substr($NF,1,6)}')"
+
+usage() {
+echo "Usage: list2tar -l list -s /gale/netapp/seq2/illumina_runs -d /gale/oberon/data2 -e tar.gz"
+echo "-l        file containing a list of directories or files"
+echo "-s        path to source parent directory where files reside"
+echo "-d        path to destination parent directory"
+#echo "-e        extension for files in the list if applicable (default is tar.gz)"
+echo "-h        display this help message"
+}
+
+while getopts ":l:s:d:e:L:h" opt; do
+  case $opt in
+    l) LISTFILE=$OPTARG;;
+    s) SRC=$OPTARG;;
+    d) DEST=$OPTARG;;
+#    e) EXT=$OPTARG;;
+    L) LOG=$OPTARG;;
+    h)
+      usage
+      exit 1;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+
+while read run_folder
+  do echo "$COMMAND $DEST/$run_folder.$EXT $SRC/$run_folder" # &> ./$run_folder.log"
+done < $LISTFILE
+
+#tar -zcvf /gale/raidix/rdx-1/archive/CMX-RNU-155_178.tar.gz /gale/raidix/rdx-6/BCLs_LostData_thumple3/Crooks/CMX-RNU-155_178 > /gale/netapp/home/seq/logs/scratch/CMX-RNU-155_178.log

@@ -1,0 +1,57 @@
+#!/bin/bash
+source "/gale/netapp/home/seq/bin/demux/date-time"
+
+QCONFIG="/gale/netapp/home/seq/bin/queue/qdefault.cfg"
+RUNNING="r"
+
+usage() {
+echo "Usage: 2q -c ~/bin/queue/q.cfg &> log"
+echo "-p        count jobs in qstat with this prefix string, eg,"
+echo "             demux, oracle, versity or count jobs with pwd name"          
+echo "-c        path to queue configuration file"
+echo "-t        number of processor threads for each job"
+echo "-v        h_vmem to use per proc"
+echo "          numeral followed by G or M" 
+echo "          eg 2G. default $VMEM"
+echo "-M        email notice recipients upon completion (comma separated list)"
+echo "-h        display this help message"
+}
+
+while getopts ":p:c:t:v:M:h" opt; do
+  case $opt in
+    p) commandprefix=$OPTARG;;
+    c) QCONFIG=$OPTARG;;
+    t) threads=$OPTARG;;
+    v) VMEM=$OPTARG;;
+    M) RECIPIENT2=$OPTARG;;
+    h)
+      usage
+      exit 1;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+checkstate(){
+
+  wait_time=$(cat $QCONFIG | jq -r '.wait_time')
+
+  state=$(qstatx | grep $commandprefix | awk '{print $5}')
+
+  [ -z $state ] && state=1
+
+
+}
+
+  checkstate
+
+  until [ $state = $RUNNING ] ; do
+
+    echo "$(date_time) INFO: Job is not running. Waiting $wait_time seconds"
+
+    sleep $wait_time
+
+    checkstate
+
+  done

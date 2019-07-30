@@ -1,0 +1,5 @@
+  --min-mapq 10 \
+  --path-to-aligner /home1/apps/intel17/bowtie/2.3.2 \
+  --num-procs 48 \
+  --trim-reads False \
+  --remove-clonal True \

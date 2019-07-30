@@ -1,0 +1,43 @@
+#!/bin/bash
+
+SUB_DIR="Config"
+usage() {
+echo "Usage: list2rm -l list -s /gale/netapp/seq2/illumina_runs"
+echo "-l        path to list directories or files"
+echo "          eg, /gale/netapp/seq2/illumina_runs/19*"
+echo "-s        path to source parent directory where subdirectory resides"
+#echo "-d        path to destination parent directory"
+echo "-e        extension for files in the list if applicable"
+echo "-h        display this help message"
+}
+
+while getopts ":l:s:e:L:h" opt; do
+  case $opt in
+    l) LIST=$OPTARG;;
+    s) SRC=$OPTARG;;
+    d) DEST=$OPTARG;;
+    e) EXT=$OPTARG;;
+    h) 
+      usage
+      exit 1;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+ls $LIST
+
+#for dir in "$LIST"; do
+#echo $dir 
+#  if [ -d  $dir/$SUB_DIR ] ; then 
+#    run_folder="$(basename $dir)"
+#    echo "delete-thumbnails $dir/$SUB_DIR &> ./$run_folder.txt"
+#  fi
+#done
+
+
+#while read run_folder
+#  do
+#      echo "delete-thumbnails $SRC/$run_folder/Thumbnail_Images &> ./$run_folder.txt"
+#done < $LISTFILE

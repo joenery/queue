@@ -7,7 +7,7 @@ COMMAND="rsync -avsz" # -i -h"
 #SRC="/gale/netapp/seq2/illumina_runs" #path to parent of source dir
 SRC="/gale/netapp/scratch"
 #DEST="/gale/oberon/data11" #dir to copy source into
-DEST="/gale/oberon/data2"
+DEST="/gale/versity/seq/2018/"
 #LOG_PARENT="/gale/netapp/home/seq/logs/seq2/rsync"
 LOG_PARENT="/gale/netapp/home/seq/logs/scratch/rsync"
 DATE="181106"
@@ -21,13 +21,13 @@ echo "-d        path to destination parent directory"
 echo "-h        display this help message"
 }
 
-while getopts ":l:s:d:e:L:h" opt; do
+while getopts ":l:s:e:d:L:h" opt; do
   case $opt in
     l) LISTFILE=$OPTARG;;
     s) SRC=$OPTARG;;
     d) DEST=$OPTARG;;
     e) EXT=$OPTARG;;
-    L) LOG=$OPTARG;;
+    L) LOG_PARENT=$OPTARG;;
     h)
       usage
       exit 1;;
@@ -38,7 +38,9 @@ while getopts ":l:s:d:e:L:h" opt; do
 done
 
 while read folder
-   do echo "$COMMAND $SRC/$folder $DEST" # --log-file=$LOG_PARENT/$DATE/$folder.txt"
+   do
+     run=$(echo $folder | awk -F/ '{print $NF}') 
+     echo "$COMMAND '$folder' '$DEST' --log-file='$LOG_PARENT/$run.txt'"
 done < $LISTFILE
 
 #You can think of a trailing / on a source as meaning 

@@ -1,0 +1,82 @@
+#!/bin/bash
+#takes a list of directories and makes a list of
+#rsync commands
+
+LISTFILE="$1"
+COMMAND="rsync -avsz" # -i -h"
+#SRC="/gale/netapp/seq2/illumina_runs" #path to parent of source dir
+SRC="/gale/netapp/scratch"
+#DEST="/gale/oberon/data11" #dir to copy source into
+DEST="/gale/oberon/data2"
+#LOG_PARENT="/gale/netapp/home/seq/logs/seq2/rsync"
+LOG_PARENT="/gale/netapp/home/seq/logs/scratch/rsync"
+DATE="181106"
+TEMPLATEDIR="~/bin/queue/script-template"
+PART1="$TEMPLATEDIR/part1"
+PART2="$TEMPLATEDIR/part2"
+PART3="$TEMPLATEDIR/part3"
+SHEBANG="$TEMPLATEDIR/shebang"
+
+usage() {
+echo "Usage: list2rsync -l list -s /gale/netapp/seq2/illumina_runs -d /gale/oberon/data2"
+echo "-l        file containing a list of directories or files"
+#echo "-s        path to source parent directory where files reside"
+#echo "-d        path to destination parent directory"
+echo "-r        read id, eg R1"
+echo "-h        display this help message"
+}
+
+READ="R1"
+
+while getopts ":l:s:d:r:g:h" opt; do
+  case $opt in
+    l) LISTFILE=$OPTARG;;
+    s) SRC=$OPTARG;;
+    d) DEST=$OPTARG;;
+    r) READ=$OPTARG;;
+    g) GENOME=$OPTARG;;
+    h)
+      usage
+      exit 1;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+if [ "$READ" = "R1" ] ; then
+ pbatstring="--pbat True \\" #True or False, False if read 2
+else
+ pbatstring="--pbat False \\"
+fi
+
+if [ "$GENOME" = "mm_10" ] ; then
+  genome="$TEMPLATEDIR/mm_10"
+elif [ "$GENOME" = "hg_19" ] ; then
+  genome="$TEMPLATEDIR/hg_19"
+else
+  echo "Please specify reference genome: mm_10 or hg_19"
+  exit 0
+fi
+
+deststring="--path-to-output $DEST "
+
+while read folder
+    do
+      outstring="#SBATCH -o $folder"_"$READ.out"
+      errstring="#SBATCH -e $folder"_"$READ.err"
+      filestring="--read-files $SRC/*$folder*$READ*.fastq.gz \\"
+      samplestring="--sample $folder \\"
+      eval cat $SHEBANG \
+        <(echo "$outstring") \
+        <(echo "$errstring") \
+        $PART1 \
+        <(echo "${filestring//--/  --}") \
+        <(echo "${samplestring//--/  --}") \
+        $genome \
+        $PART2 \
+        <(echo "${pbatstring//--/  --}") \
+        $PART3 \
+        <(echo "${deststring//--/  --}") > $folder\_$READ.sh
+done < $LISTFILE
+

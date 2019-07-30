@@ -1,0 +1,32 @@
+#!/bin/bash
+#takes a list of directories and makes a list of
+#rsync commands
+
+LISTFILE="$1"
+COMMAND="zcat"
+SRC="/gale/netapp/seq4/illumina_runs/.processed/kuo-fen/merged" #path to parent of source dir
+DEST="/gale/netapp/seq4/illumina_runs/.processed/kuo-fen/merged" #dir to copy source into
+LOG="/gale/netapp/home/seq/logs/seq2/rsync"
+PIPELINE="| awk '{if ($7==1) print $0}' |  awk -F "\t" '{if (substr($4,2,1)=="G") print $1 $2 $3 "CG" $5 $6 $7; else if (substr($4,3,1)=="G") print $1 $2 $3 "CHG" $5 $6 $7; else print $1 $2 $3 "CHH" $5 $6 $7}'"
+
+while getopts ":l:s:d:L" opt; do
+  case $opt in
+    l) LISTFILE=$OPTARG;;
+    s) SRC=$OPTARG;;
+    d) DEST=$OPTARG;;
+    L) LOG=$OPTARG;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      ;;
+  esac
+done
+
+while read folder
+   do echo "$COMMAND $SRC/$folder $PIPELINE > $DEST/$folder".tsv2""
+done < $LISTFILE
+
+#You can think of a trailing / on a source as meaning 
+#"copy the contents of this directory" as opposed to 
+#"copy the directory by name"
+
+#zcat allc_mm_8W-9W_CholBS_A.gz | awk '{if ($7==1) print $0}' |  awk '{if (substr($4,2,1)=="G") print $1"\t"$2"\t"$3"\tCG\t"$5"\t"$6"\t"$7; else if (substr($4,3,1)=="G") print $1"\t"$2"\t"$3"\tCHG\t"$5"\t"$6"\t"$7; else print $1"\t"$2"\t"$3"\tCHH\t"$5"\t"$6"\t"$7}' > allc_mm_8W-9W_CholBS_A.tsv2

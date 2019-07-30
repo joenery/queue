@@ -1,0 +1,3 @@
+  --forward-ref /work/06382/seq/stampede2/genomes/mm10_bt2/mm10_f \
+  --reverse-ref /work/06382/seq/stampede2/genomes/mm10_bt2/mm10_r \
+  --ref-fasta /work/06382/seq/stampede2/genomes/mm10_bt2/mm10.fa \
